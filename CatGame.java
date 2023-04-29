@@ -1,4 +1,6 @@
-import edu.princeton.cs.algs4.DjikstraUndirectedSP;
+import edu.princeton.cs.algs4.DijkstraUndirectedSP;
+import edu.princeton.cs.algs4.EdgeWeightedGraph;
+import java.util.Random;
 
 public class CatGame
 {
@@ -12,68 +14,59 @@ public class CatGame
         this.n = n;
         board = new EdgeWeightedGraph(n*n+1);
         marked = new boolean[n][n];
-        catPosition = (n/2)*(n/2);
-        FREEDOM = n*n + 1;
+        catPosition = n*n/2;
+        FREEDOM = n*n;
 
-        //Do the inside edges first
-        for (int row = 1; row<n-1; row++)
+        //Add Edges
+        for (int row = 0; row<n; row++)
         {
-            for (int col = 1; col<n-1; col++)
-            {   
-                int v = getVertex(row, col); //Current vertex
-
-                //Add all 6 edges
-                board.addEdge(new CatEdge(v, getVertex(row-1, col+1)));
-                board.addEdge(new CatEdge(v, getVertex(row-1, col-1)));
-
-                board.addEdge(new CatEdge(v, getVertex(row, col+1)));
-                board.addEdge(new CatEdge(v, getVertex(row, col-1)));
-
-                board.addEdge(new CatEdge(v, getVertex(row+1, col+1)));
-                board.addEdge(new CatEdge(v, getVertex(row+1, col-1)));
-            }
+           for (int col = 0; col<n; col++)
+           {
+             if (row != n-1) 
+             {
+               board.addEdge(new CatEdge(getVertex(row, col), getVertex(row+1, col)));
+               if (row % 2 == 0 && col != 0) {board.addEdge(new CatEdge(getVertex(row, col), getVertex(row+1, col-1)));}
+               if (row % 2 == 1 && col != n-1) {board.addEdge(new CatEdge(getVertex(row, col), getVertex(row+1, col+1)));}
+             }
+             if (col != n-1) {board.addEdge(new CatEdge(getVertex(row, col), getVertex(row, col+1)));}
+             
+             //Freedom squares
+             if (row == 0 || col == 0 || row == n-1 || col == n-1) {board.addEdge(new CatEdge(getVertex(row, col), FREEDOM));}
+           }
         }
-
-        //Do outside edge
-        for (int col = 0; col<n-1; col++)
+        
+        int addedBlocks = 5;
+        Random ran = new Random();
+        for (int i = 0; i<addedBlocks; i++)
         {
-            board.addEdge(new CatEdge(getVertex(0, col), getVertex(0, col+1)));
-            board.addEdge(new CatEdge(getVertex(0, col), FREEDOM));
-
-            board.addEdge(new CatEdge(getVertex(n-1, col), getVertex(n-1, col+1)));
-            board.addEdge(new CatEdge(getVertex(n-1, col), FREEDOM));
+           int choice = ran.nextInt(n*n+1); 
+           while (marked[choice/n][choice%n] || choice == catPosition)
+           {
+              choice = ran.nextInt(n*n+1); 
+           }
+           mark(choice/n, choice%n); 
         }
-
-        board.addEdge(new CatEdge(getVertex(0, n-1), FREEDOM));
-        board.addEdge(new CatEdge(getVertex(n-1, n-1), FREEDOM));
-
-        for (int row = 0; row<n-1; row++)
-        {
-            board.addEdge(new CatEdge(getVertex(row, 0), getVertex(row+1, 0)));
-            board.addEdge(new CatEdge(getVertex(row, 0), FREEDOM));
-
-            board.addEdge(new CatEdge(getVertex(row, n-1), getVertex(row+1, n-1)));
-            board.addEdge(new CatEdge(getVertex(row, n-1), FREEDOM));
-        }
-
-        board.addEdge(new CatEdge(getVertex(0, 0), FREEDOM));
-        board.addEdge(new CatEdge(getVertex(n-1, 0), FREEDOM));
     }
 
     private int getVertex(int row, int col) {return row*n + col;}
-
-    public void markTile(int row, int col)
+    private void mark(int row, int col)
     {
-        DjikstraUndirectedSP shortestPath = new DjikstraUndirectedSP(board, catPosition);
-        CatEdge e = (CatEdge) shortestPath.pathTo(FREEDOM).iterator().next();
-        catPosition = e.other(catPosition);
-
-        for (Edge ce : adj[getVertex(row, col)])
+      for (Edge ce : board.adj(getVertex(row, col)))
         {
-            ce = (CatEdge) ce;
-            ce.markEdge();
+            CatEdge ce2 = (CatEdge) ce;
+            ce2.markEdge();
         }
         marked[row][col] = true;
+    }
+    
+    public void markTile(int row, int col)
+    {
+        mark(row, col);
+        if (catIsTrapped()) {return;}
+        
+        DijkstraUndirectedSP shortestPath = new DijkstraUndirectedSP(board, catPosition);
+        CatEdge e = (CatEdge) shortestPath.pathTo(FREEDOM).iterator().next();
+        catPosition = e.other(catPosition);
     }
 
     public boolean marked(int row, int col)
@@ -93,7 +86,7 @@ public class CatGame
 
     public boolean catIsTrapped()
     {
-        DjikstraUndirectedSP shortestPath = new DjikstraUndirectedSP(board, catPosition);
-        return shortestPath.distTo[FREEDOM] == Double.POSITIVE_INFINITY;
+        DijkstraUndirectedSP shortestPath = new DijkstraUndirectedSP(board, catPosition);
+        return !shortestPath.hasPathTo(FREEDOM);
     }
 }
